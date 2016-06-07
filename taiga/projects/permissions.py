@@ -78,6 +78,11 @@ class ProjectPermission(TaigaResourcePermission):
     transfer_start_perms = IsObjectOwner()
     transfer_reject_perms = IsAuthenticated() & HasProjectPerm('view_project')
     transfer_accept_perms = IsAuthenticated() & HasProjectPerm('view_project')
+    create_tag_perms = IsProjectAdmin()
+    update_color_tag_perms = IsProjectAdmin()
+    rename_tag_perms = IsProjectAdmin()
+    delete_tag_perms = IsProjectAdmin()
+    mix_tags_perms = IsProjectAdmin()
 
 
 class ProjectFansPermission(TaigaResourcePermission):

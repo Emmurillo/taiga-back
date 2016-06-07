@@ -405,6 +405,66 @@ class ProjectViewSet(LikedResourceMixin, HistoryResourceMixin,
         services.reject_project_transfer(project, request.user, token, reason)
         return response.Ok()
 
+    @detail_route(methods=["POST"])
+    def create_tag(self, request, pk=None):
+        project = self.get_object()
+        self.check_permissions(request, "create_tag", project)
+        serializer = serializers.CreateTagSerializer(data=request.DATA, project=project)
+        if not serializer.is_valid():
+            return response.BadRequest(serializer.errors)
+
+        data = serializer.data
+        services.create_tag(project, data.get("tag"), data.get("color"))
+        return response.Ok()
+
+    @detail_route(methods=["POST"])
+    def update_color_tag(self, request, pk=None):
+        project = self.get_object()
+        self.check_permissions(request, "update_color_tag", project)
+        serializer = serializers.UpdateColorTagSerializer(data=request.DATA, project=project)
+        if not serializer.is_valid():
+            return response.BadRequest(serializer.errors)
+
+        data = serializer.data
+        services.update_color_tag(project, data.get("tag"), data.get("color"))
+        return response.Ok()
+
+    @detail_route(methods=["POST"])
+    def rename_tag(self, request, pk=None):
+        project = self.get_object()
+        self.check_permissions(request, "rename_tag", project)
+        serializer = serializers.RenameTagSerializer(data=request.DATA, project=project)
+        if not serializer.is_valid():
+            return response.BadRequest(serializer.errors)
+
+        data = serializer.data
+        services.rename_tag(project, data.get("from_tag"), data.get("to_tag"))
+        return response.Ok()
+
+    @detail_route(methods=["POST"])
+    def delete_tag(self, request, pk=None):
+        project = self.get_object()
+        self.check_permissions(request, "delete_tag", project)
+        serializer = serializers.DeleteTagSerializer(data=request.DATA, project=project)
+        if not serializer.is_valid():
+            return response.BadRequest(serializer.errors)
+
+        data = serializer.data
+        services.delete_tag(project, data.get("tag"))
+        return response.Ok()
+
+    @detail_route(methods=["POST"])
+    def mix_tags(self, request, pk=None):
+        project = self.get_object()
+        self.check_permissions(request, "rename_tag", project)
+        serializer = serializers.MixTagsSerializer(data=request.DATA, project=project)
+        if not serializer.is_valid():
+            return response.BadRequest(serializer.errors)
+
+        data = serializer.data
+        services.mix_tags(project, data.get("from_tags"), data.get("to_tag"))
+        return response.Ok()
+
     def _set_base_permissions(self, obj):
         update_permissions = False
         if not obj.id:
