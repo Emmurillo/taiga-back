@@ -28,36 +28,10 @@ def create_tag(project, tag, color):
 
 
 def update_color_tag(project, tag, color):
-    sql = """
-        WITH
-            -- Temporal table with two columns: project_id and tags_colors
-            tags_colors AS (
-            	SELECT id project_id, reduce_dim(tags_colors) tags_colors
-                FROM projects_project
-                WHERE id = {project_id}
-            ),
-            -- Temporal table with two columns: tag and color with the updated color
-            expanded_tags_colors AS (
-            	SELECT project_id, tags_colors[1] tag, tags_colors[2] color
-            	FROM tags_colors
-            	WHERE tags_colors[1] != '{tag}'
-            	UNION
-            	SELECT {project_id}, '{tag}' tag, '{color}' color
-            ),
-            rebuilt_tags_colors AS (
-            	SELECT expanded_tags_colors.project_id project_id, array_agg_mult(ARRAY[[expanded_tags_colors.tag, expanded_tags_colors.color]]) tags_colors
-            	FROM expanded_tags_colors
-            	GROUP BY expanded_tags_colors.project_id
-            )
-
-        UPDATE projects_project
-        SET tags_colors = rebuilt_tags_colors.tags_colors
-        FROM rebuilt_tags_colors
-        WHERE projects_project.id = rebuilt_tags_colors.project_id;
-    """
-    sql = sql.format(project_id=project.id, tag=tag, color=color)
-    cursor = connection.cursor()
-    cursor.execute(sql)
+    tags_colors = dict(project.tags_colors)
+    tags_colors[tag] = color
+    project.tags_colors = list(tags_colors.items())
+    project.save()
 
 
 def rename_tag(project, from_tag, to_tag):
@@ -66,34 +40,15 @@ def rename_tag(project, from_tag, to_tag):
         UPDATE userstories_userstory SET tags = array_distinct(array_replace(tags, '{from_tag}', '{to_tag}')) WHERE project_id={project_id};
         UPDATE tasks_task SET tags = array_distinct(array_replace(tags, '{from_tag}', '{to_tag}')) WHERE project_id={project_id};
         UPDATE issues_issue SET tags = array_distinct(array_replace(tags, '{from_tag}', '{to_tag}')) WHERE project_id={project_id};
-
-        WITH
-            tags_colors AS (
-            	SELECT id project_id, reduce_dim(tags_colors) tags_colors
-                FROM projects_project
-                WHERE id = {project_id}
-            ),
-            expanded_tags_colors AS (
-                SELECT project_id, tags_colors[1] tag, tags_colors[2] color
-                FROM tags_colors
-                WHERE tags_colors[1] != '{from_tag}'
-                UNION
-                SELECT {project_id} project_id, '{to_tag}' tag, '{color}' color
-            ),
-            rebuilt_tags_colors AS (
-            	SELECT expanded_tags_colors.project_id project_id, array_agg_mult(ARRAY[[expanded_tags_colors.tag, expanded_tags_colors.color]]) tags_colors
-            	FROM expanded_tags_colors
-            	GROUP BY expanded_tags_colors.project_id
-            )
-
-        UPDATE projects_project
-        SET tags_colors = rebuilt_tags_colors.tags_colors
-        FROM rebuilt_tags_colors
-        WHERE projects_project.id = rebuilt_tags_colors.project_id;
     """
     sql = sql.format(project_id=project.id, from_tag=from_tag, to_tag=to_tag, color=color)
     cursor = connection.cursor()
     cursor.execute(sql)
+
+    tags_colors = dict(project.tags_colors)
+    tags_colors[to_tag] = tags_colors.pop(from_tag)
+    project.tags_colors = list(tags_colors.items())
+    project.save()
 
 
 def delete_tag(project, tag):
@@ -101,28 +56,15 @@ def delete_tag(project, tag):
         UPDATE userstories_userstory SET tags = array_remove(tags, '{tag}') WHERE project_id={project_id};
         UPDATE tasks_task SET tags = array_remove(tags, '{tag}') WHERE project_id={project_id};
         UPDATE issues_issue SET tags = array_remove(tags, '{tag}') WHERE project_id={project_id};
-
-        WITH
-            tags_colors AS (
-            	SELECT id project_id, reduce_dim(tags_colors) tags_colors
-                FROM projects_project
-                WHERE id = {project_id}
-            ),
-            rebuilt_tags_colors AS (
-            	SELECT tags_colors.project_id project_id, array_agg_mult(ARRAY[[tags_colors.tags_colors[1], tags_colors.tags_colors[2]]]) tags_colors
-            	FROM tags_colors
-            	WHERE tags_colors.tags_colors[1] != '{tag}'
-            	GROUP BY tags_colors.project_id
-            )
-
-        UPDATE projects_project
-        SET tags_colors = rebuilt_tags_colors.tags_colors
-        FROM rebuilt_tags_colors
-        WHERE projects_project.id = rebuilt_tags_colors.project_id;
     """
     sql = sql.format(project_id=project.id, tag=tag)
     cursor = connection.cursor()
     cursor.execute(sql)
+
+    tags_colors = dict(project.tags_colors)
+    del tags_colors[tag]
+    project.tags_colors = list(tags_colors.items())
+    project.save()
 
 
 def mix_tags(project, from_tags, to_tag):

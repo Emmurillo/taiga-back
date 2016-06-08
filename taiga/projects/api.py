@@ -409,6 +409,7 @@ class ProjectViewSet(LikedResourceMixin, HistoryResourceMixin,
     def create_tag(self, request, pk=None):
         project = self.get_object()
         self.check_permissions(request, "create_tag", project)
+        self._raise_if_blocked(project)
         serializer = serializers.CreateTagSerializer(data=request.DATA, project=project)
         if not serializer.is_valid():
             return response.BadRequest(serializer.errors)
@@ -421,6 +422,7 @@ class ProjectViewSet(LikedResourceMixin, HistoryResourceMixin,
     def update_color_tag(self, request, pk=None):
         project = self.get_object()
         self.check_permissions(request, "update_color_tag", project)
+        self._raise_if_blocked(project)
         serializer = serializers.UpdateColorTagSerializer(data=request.DATA, project=project)
         if not serializer.is_valid():
             return response.BadRequest(serializer.errors)
@@ -433,6 +435,7 @@ class ProjectViewSet(LikedResourceMixin, HistoryResourceMixin,
     def rename_tag(self, request, pk=None):
         project = self.get_object()
         self.check_permissions(request, "rename_tag", project)
+        self._raise_if_blocked(project)
         serializer = serializers.RenameTagSerializer(data=request.DATA, project=project)
         if not serializer.is_valid():
             return response.BadRequest(serializer.errors)
@@ -445,6 +448,7 @@ class ProjectViewSet(LikedResourceMixin, HistoryResourceMixin,
     def delete_tag(self, request, pk=None):
         project = self.get_object()
         self.check_permissions(request, "delete_tag", project)
+        self._raise_if_blocked(project)
         serializer = serializers.DeleteTagSerializer(data=request.DATA, project=project)
         if not serializer.is_valid():
             return response.BadRequest(serializer.errors)
@@ -457,6 +461,7 @@ class ProjectViewSet(LikedResourceMixin, HistoryResourceMixin,
     def mix_tags(self, request, pk=None):
         project = self.get_object()
         self.check_permissions(request, "rename_tag", project)
+        self._raise_if_blocked(project)
         serializer = serializers.MixTagsSerializer(data=request.DATA, project=project)
         if not serializer.is_valid():
             return response.BadRequest(serializer.errors)
@@ -464,6 +469,10 @@ class ProjectViewSet(LikedResourceMixin, HistoryResourceMixin,
         data = serializer.data
         services.mix_tags(project, data.get("from_tags"), data.get("to_tag"))
         return response.Ok()
+
+    def _raise_if_blocked(self, project):
+        if self.is_blocked(project):
+            raise exc.Blocked(_("Blocked element"))
 
     def _set_base_permissions(self, obj):
         update_permissions = False
